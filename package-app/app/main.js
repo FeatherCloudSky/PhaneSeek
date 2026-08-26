@@ -258,14 +258,14 @@ async function startService() {
   try {
     const nmDir = path.join(home, 'profiles', 'node_modules');
     if (fs.existsSync(nmDir)) {
-      const hasRealDirs = fs.readdirSync(nmDir, { withFileTypes: true })
-        .some(d => d.isDirectory() && !(d.isSymbolicLink?.() || false));
+      const entries = fs.readdirSync(nmDir, { withFileTypes: true });
+      const hasRealDirs = entries.some(d => d.isDirectory() && !d.isSymbolicLink());
       if (hasRealDirs) {
         fs.rmSync(nmDir, { recursive: true, force: true });
         console.log('[svc] healed profiles/node_modules: removed real dirs for symlink rebuild');
       }
     }
-  } catch (_) {}
+  } catch (e) { console.error('[svc] heal failed:', e && e.message); }
 
   // 启动自检:前端与服务端版本必须匹配,不匹配时从备份恢复(防止坏更新后界面打不开)
   ensureWebuiCompatible();
