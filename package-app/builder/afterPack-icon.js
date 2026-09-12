@@ -10,7 +10,7 @@ exports.default = async function afterPack(context) {
   if (electronPlatformName !== 'win32') return;
 
   // 定位 exe(executableName 或 productName)
-  const execName = (packager.executableName || 'WhaleBox') + '.exe';
+  const execName = (packager.executableName || 'PhaneSeek') + '.exe';
   let exePath = path.join(appOutDir, execName);
   if (!fs.existsSync(exePath)) {
     // 兜底:找目录下的 exe

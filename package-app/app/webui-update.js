@@ -1,4 +1,4 @@
-// WhaleBox 鲸盒 — WebUI 单独更新模块(纯 Node,不依赖 Electron)
+// PhaneSeek — WebUI 单独更新模块(纯 Node,不依赖 Electron)
 // 职责:检测官方 npm 上 @deepseek-ai/dsh-web-frontend 的最新版本、下载 tarball、
 //       解压校验、原子替换运行时内置 dist 目录。所有路径由调用方(main.js)传入,
 //       本模块只做文件与网络,便于独立冒烟测试。
@@ -13,7 +13,7 @@ const { spawnSync } = require('child_process');
 
 const PACKAGE_NAME = '@deepseek-ai/dsh-web-frontend';
 const REGISTRY_BASE = 'https://registry.npmjs.org';
-const UA = 'HDSH-webui-updater/1.4.0';
+const UA = 'PhaneSeek-webui-updater/1.6.0';
 const TAR_EXE = process.env.SystemRoot
   ? path.join(process.env.SystemRoot, 'System32', 'tar.exe')
   : 'tar.exe';

@@ -1,9 +1,9 @@
-// HDSH 内置更新检测 — 浏览器半边
+// PhaneSeek 内置更新检测 — 浏览器半边
 // 设置 → 通用设置的「更新检测」栏目:
 //  - 框架(本应用):一键自动更新。点击「检查框架更新」→ 发现新版本 → 点击
 //    「立即更新」→ 自动下载(转圈 + 进度条 + 提示)→ 自动安装 → 应用自动重启,
 //    全程无需用户手动前往官网下载。驱动:Electron 主进程 electron-updater,
-//    事件经 window.hdsh.onUpdateEvent 回报。
+//    事件经 window.phaneseek.onUpdateEvent 回报。
 //  - WebUI(官方 DeepSeek Harness 界面):检测官方仓库最新版本并打开发布页
 //    (WebUI 组件随框架安装包分发,随框架更新一并升级)。
 window.__ModuleLoader__.load({
@@ -92,8 +92,8 @@ window.__ModuleLoader__.load({
 
 		// ---- 框架标准通道事件(electron-updater;一键更新回退到标准下载时使用) ----
 		function subscribeUpdater(setState) {
-			if (!window || !window.hdsh || !window.hdsh.onUpdateEvent) return () => {};
-			return window.hdsh.onUpdateEvent((ev) => {
+			if (!window || !window.phaneseek || !window.phaneseek.onUpdateEvent) return () => {};
+			return window.phaneseek.onUpdateEvent((ev) => {
 				setState((prev) => {
 					switch (ev.type) {
 						case "download-progress":
@@ -101,7 +101,7 @@ window.__ModuleLoader__.load({
 						case "update-downloaded":
 							// 标准通道下载完成 → 提示后自动安装并重启
 							setTimeout(() => {
-								if (window.hdsh && window.hdsh.installUpdate) window.hdsh.installUpdate().catch(() => {});
+								if (window.phaneseek && window.phaneseek.installUpdate) window.phaneseek.installUpdate().catch(() => {});
 							}, 1800);
 							return { ...prev, phase: "installing", error: null };
 						case "error":
@@ -118,8 +118,8 @@ window.__ModuleLoader__.load({
 
 		// ---- 统一更新事件(主进程编排:修复 WebUI → 加速下载 → 校验 → 安装) ----
 		function subscribeAll(setState) {
-			if (!window || !window.hdsh || !window.hdsh.onUpdateAllEvent) return () => {};
-			return window.hdsh.onUpdateAllEvent((ev) => {
+			if (!window || !window.phaneseek || !window.phaneseek.onUpdateAllEvent) return () => {};
+			return window.phaneseek.onUpdateAllEvent((ev) => {
 				setState((prev) => {
 					switch (ev.type) {
 						case "repairing":
@@ -149,11 +149,11 @@ window.__ModuleLoader__.load({
 
 		function doCheckAll(setState) {
 			setState({ phase: "checking", check: null, percent: 0, speed: null, tip: null, error: null, dismissed: false, repairVersion: null });
-			const hdsh = (window && window.hdsh) || {};
-			if (!hdsh.checkAll) {
+			const phaneseek = (window && window.phaneseek) || {};
+			if (!phaneseek.checkAll) {
 				return setState({ phase: "error", check: null, error: "当前版本不支持统一更新,请先升级框架", dismissed: false });
 			}
-			hdsh.checkAll().then((res) => {
+			phaneseek.checkAll().then((res) => {
 				if (!res || !res.ok) {
 					return setState({ phase: "error", check: res || null, error: (res && res.error) || "检查失败", dismissed: false });
 				}
@@ -164,19 +164,19 @@ window.__ModuleLoader__.load({
 		}
 
 		function doRunAll(setState) {
-			const hdsh = (window && window.hdsh) || {};
-			if (!hdsh.runUpdateAll) {
+			const phaneseek = (window && window.phaneseek) || {};
+			if (!phaneseek.runUpdateAll) {
 				return setState((prev) => ({ ...prev, phase: "error", error: "更新通道不可用" }));
 			}
 			setState((prev) => ({ ...prev, phase: "preparing", percent: 0, speed: null, error: null, tip: null, dismissed: false }));
-			hdsh.runUpdateAll().catch((e) => {
+			phaneseek.runUpdateAll().catch((e) => {
 				setState((prev) => ({ ...prev, phase: "error", error: String((e && e.message) || e) }));
 			});
 		}
 
 		function openRepo(result) {
-			if (window && window.hdsh && window.hdsh.openUrl && result && result.repoUrl) {
-				window.hdsh.openUrl(result.repoUrl).catch(() => {});
+			if (window && window.phaneseek && window.phaneseek.openUrl && result && result.repoUrl) {
+				window.phaneseek.openUrl(result.repoUrl).catch(() => {});
 			}
 		}
 
@@ -187,8 +187,8 @@ window.__ModuleLoader__.load({
 			const els = [];
 			els.push(h("div", { className: "updchk-line" },
 				h("div", { className: "updchk-info" },
-					h("div", { className: "updchk-name" }, "框架(WhaleBox)+ WebUI(官方界面)"),
-					h("div", { className: "updchk-repo" }, "框架源:WhaleBox Releases · WebUI 源:官方 npm")
+					h("div", { className: "updchk-name" }, "框架(PhaneSeek)+ WebUI(官方界面)"),
+					h("div", { className: "updchk-repo" }, "框架源:PhaneSeek Releases · WebUI 源:官方 npm")
 				),
 				h("button", { className: "updchk-btn", disabled: busy, onClick: () => doCheckAll(setState) },
 					state.phase === "checking" ? "检查中…" : "一键检查更新")
@@ -203,7 +203,7 @@ window.__ModuleLoader__.load({
 					"正在检查框架与 WebUI 更新…"));
 			} else if (state.phase === "error") {
 				els.push(h("div", { className: "updchk-status updchk-err" }, "✗ " + (state.error || "更新失败")));
-				els.push(h("button", { className: "updchk-link", onClick: () => openRepo({ repoUrl: "https://github.com/FeatherCloudSky/WhaleBox/releases/latest", repoLabel: "WhaleBox 发布页" }) }, "打开 WhaleBox 发布页 ↗"));
+				els.push(h("button", { className: "updchk-link", onClick: () => openRepo({ repoUrl: "https://github.com/FeatherCloudSky/PhaneSeek/releases/latest", repoLabel: "PhaneSeek 发布页" }) }, "打开 PhaneSeek 发布页 ↗"));
 			} else if (state.phase === "ready") {
 				const c = state.check || {};
 				const fw = c.framework || {};

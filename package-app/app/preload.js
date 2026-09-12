@@ -1,61 +1,61 @@
-// WhaleBox 鲸盒 玻璃窗口壳 — 预加载脚本(沙箱内,内嵌样式)
+// PhaneSeek 玻璃窗口壳 — 预加载脚本(沙箱内,内嵌样式)
 // 职责:向 WebUI 页面注入顶部玻璃横栏(左侧品牌、右侧悬浮胶囊按钮组),
 //       按钮真实控制窗口(经 IPC),外观采用毛玻璃质感样式。
 const { ipcRenderer, contextBridge } = require('electron');
 
-// 内置更新检测桥:向页面主世界暴露 window.hdsh(沙箱 preload 只能经 IPC 触达主进程)
-contextBridge.exposeInMainWorld('hdsh', {
+// 内置更新检测桥:向页面主世界暴露 window.phaneseek(沙箱 preload 只能经 IPC 触达主进程)
+contextBridge.exposeInMainWorld('phaneseek', {
   // 当前版本:{ framework, webui }
-  getVersions: () => ipcRenderer.invoke('hdsh:get-versions'),
+  getVersions: () => ipcRenderer.invoke('phaneseek:get-versions'),
   // 下载框架安装包到「下载」文件夹并打开:{ url, fileName } → { ok, message }
-  downloadFramework: (payload) => ipcRenderer.invoke('hdsh:download-framework', payload),
+  downloadFramework: (payload) => ipcRenderer.invoke('phaneseek:download-framework', payload),
   // 用系统默认浏览器打开链接:url → { ok, message }
-  openUrl: (url) => ipcRenderer.invoke('hdsh:open-url', url),
+  openUrl: (url) => ipcRenderer.invoke('phaneseek:open-url', url),
   // ---- 一键自动更新(electron-updater) ----
   // 检查更新:触发 checkForUpdates,结果经 onUpdateEvent 回报
-  checkUpdate: () => ipcRenderer.invoke('hdsh:updater-check'),
+  checkUpdate: () => ipcRenderer.invoke('phaneseek:updater-check'),
   // 下载更新(检查到新版本后调用);进度经 download-progress 事件回报
-  downloadUpdate: () => ipcRenderer.invoke('hdsh:updater-download'),
+  downloadUpdate: () => ipcRenderer.invoke('phaneseek:updater-download'),
   // 安装并重启(下载完成后调用)→ { ok }
-  installUpdate: () => ipcRenderer.invoke('hdsh:updater-install'),
+  installUpdate: () => ipcRenderer.invoke('phaneseek:updater-install'),
   // 订阅更新事件:cb({ type, ... }) → 返回退订函数
   // type: checking-for-update | update-available | update-not-available
   //       | download-progress | update-downloaded | error
   onUpdateEvent: (cb) => {
     const listener = (_e, data) => { try { cb(data); } catch (_) {} };
-    ipcRenderer.on('hdsh:updater-event', listener);
-    return () => ipcRenderer.removeListener('hdsh:updater-event', listener);
+    ipcRenderer.on('phaneseek:updater-event', listener);
+    return () => ipcRenderer.removeListener('phaneseek:updater-event', listener);
   },
   // ---- WebUI 单独更新(不重装框架) ----
   // 检查:→ { ok, current, latest, source, updateAvailable, sameLine, error? }
-  webuiCheck: () => ipcRenderer.invoke('hdsh:webui-check'),
+  webuiCheck: () => ipcRenderer.invoke('phaneseek:webui-check'),
   // 下载指定版本(下载+解压校验,不生效)→ { ok, version, error? }
-  webuiDownload: (version) => ipcRenderer.invoke('hdsh:webui-download', { version }),
+  webuiDownload: (version) => ipcRenderer.invoke('phaneseek:webui-download', { version }),
   // 应用下载好的更新(替换 dist + 重启服务 + 刷新窗口)→ { ok, version, restarted, error? }
-  webuiInstall: () => ipcRenderer.invoke('hdsh:webui-install'),
+  webuiInstall: () => ipcRenderer.invoke('phaneseek:webui-install'),
   // 订阅 WebUI 更新事件:cb({ type, ... }) → 返回退订函数
   // type: downloading({ percent }) | extracting | downloaded({ version })
   //       | installing({ version }) | done({ version }) | error({ message })
   onWebuiEvent: (cb) => {
     const listener = (_e, data) => { try { cb(data); } catch (_) {} };
-    ipcRenderer.on('hdsh:webui-event', listener);
-    return () => ipcRenderer.removeListener('hdsh:webui-event', listener);
+    ipcRenderer.on('phaneseek:webui-event', listener);
+    return () => ipcRenderer.removeListener('phaneseek:webui-event', listener);
   },
   // ---- 统一更新(框架 + WebUI 一次检查、一键完成) ----
   // 一次检查框架与 WebUI:→ { ok, framework:{current,latest,updateAvailable,skipped,error},
   //   webui:{current,server,officialLatest,mismatch,repairVersion,needFrameworkUpdate,error},
   //   actions:['webui-repair'?,'framework-update'?], anyUpdate }
-  checkAll: () => ipcRenderer.invoke('hdsh:check-all'),
+  checkAll: () => ipcRenderer.invoke('phaneseek:check-all'),
   // 一键完成全部更新:修复 WebUI(如需)→ 加速下载框架 → 校验 → 静默安装重启
-  runUpdateAll: () => ipcRenderer.invoke('hdsh:update-all-run'),
+  runUpdateAll: () => ipcRenderer.invoke('phaneseek:update-all-run'),
   // 订阅统一更新事件:cb({ type, ... }) → 返回退订函数
   // type: repairing({ version }) | repair-downloading({ percent }) | extracting
   //       | downloading({ percent, bytesPerSecond }) | verifying | installing
   //       | fallback({ message }) | done | error({ message })
   onUpdateAllEvent: (cb) => {
     const listener = (_e, data) => { try { cb(data); } catch (_) {} };
-    ipcRenderer.on('hdsh:update-all-event', listener);
-    return () => ipcRenderer.removeListener('hdsh:update-all-event', listener);
+    ipcRenderer.on('phaneseek:update-all-event', listener);
+    return () => ipcRenderer.removeListener('phaneseek:update-all-event', listener);
   }
 });
 
@@ -150,8 +150,8 @@ html[data-lg-theme="dark"] #${TITLEBAR_ID} {
   width: 100%; height: 100%;
   display: block;
 }
-/* 非官方社区版徽标:弱化样式,仅作标识声明 */
-#${TITLEBAR_ID} .dsh-lg-unofficial {
+/* 品牌徽标:弱化样式,仅作标识声明 */
+#${TITLEBAR_ID} .dsh-lg-brandmark {
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.2px;
@@ -290,9 +290,9 @@ const ICONS = {
 function buildTitlebar() {
   const bar = document.createElement('div');
   bar.id = TITLEBAR_ID;
-  bar.title = 'WhaleBox 鲸盒 — 拖拽此横栏可移动窗口,双击切换最大化';
+  bar.title = 'PhaneSeek — 拖拽此横栏可移动窗口,双击切换最大化';
   bar.innerHTML = `
-    <div class="dsh-lg-brand"><span class="dsh-lg-logo"><img src="${LOGO_DATA}" alt=""></span><span>WhaleBox 鲸盒</span><span class="dsh-lg-unofficial">非官方</span></div>
+    <div class="dsh-lg-brand"><span class="dsh-lg-logo"><img src="${LOGO_DATA}" alt=""></span><span>PhaneSeek</span><span class="dsh-lg-brandmark">法涅斯</span></div>
     <div class="dsh-lg-controls">
       <button class="dsh-lg-btn dsh-lg-min" title="最小化">${ICONS.minimize}</button>
       <button class="dsh-lg-btn dsh-lg-max" title="${isMaximized ? '还原' : '最大化'}">${isMaximized ? ICONS.restore : ICONS.maximize}</button>

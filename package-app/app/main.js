@@ -1,4 +1,4 @@
-// WhaleBox 鲸盒 独立 App — 主进程
+// PhaneSeek 独立 App — 主进程
 // 职责:内置 node 拉起 dsh web 服务(端口 8898)、用户数据目录管理、
 //       无边框玻璃窗口、窗口控制 IPC、单实例防重复、关窗即停服。
 // 启动策略:窗口先行(内嵌启动画面),服务后台拉起,就绪即换真实界面。
@@ -12,9 +12,9 @@ const { spawn, spawnSync } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 const webuiUpdate = require('./webui-update.js');
 
-const APP_NAME = 'WhaleBox';
+const APP_NAME = 'PhaneSeek';
 app.setName(APP_NAME);
-app.setAppUserModelId('io.github.feathercloudsky.whalebox');
+app.setAppUserModelId('io.github.feathercloudsky.phaneseek');
 
 // 端口可配置(测试用;正式固定 8898)
 const PORT = Number(process.env.DSH_PORT || 8898);
@@ -41,7 +41,7 @@ background:rgba(245,242,234,.92);border:1px solid rgba(160,150,130,.35);box-shad
 @keyframes s{0%{transform:translateX(-110%)}100%{transform:translateX(320%)}}
 .err .tip{color:#b3403a}.err .bar i{animation:none;width:100%;background:#c25650}
 </style></head><body><div class="card"><div class="logo"><img src="${LOGO_URI}" alt=""></div>
-<div class="t">WhaleBox 鲸盒</div><div class="tip hide" id="tip">正在初始化…</div>
+<div class="t">PhaneSeek</div><div class="tip hide" id="tip">正在初始化…</div>
 <div class="bar"><i></i></div></div>
 <script>
 var tips=['正在初始化…','正在拉起本地运行时…','正在唤醒 DeepSeek Harness…','正在准备工具链…','正在连接本地服务…','稍等片刻，即将就绪…','正在加载界面…'];
@@ -81,9 +81,9 @@ const DSH_BIN = () => path.join(runtimeDir(), 'dsh', 'lib', 'bin.js');
 // --patch 覆盖文件:向 dsh 组合追加本应用内置的更新检测插件行(dsh-update-check)。
 // 打包后该文件经 electron-builder extraResources 落到 resources/(真实文件),
 // 因为 dsh 服务由纯 node.exe 拉起、无法读取 app.asar 内部文件。
-const HDSH_PATCH_FILE = () => app.isPackaged
-  ? path.join(process.resourcesPath, 'hdsh-update-check.patch.yml')
-  : path.join(__dirname, 'hdsh-update-check.patch.yml');
+const PHANESEEK_PATCH_FILE = () => app.isPackaged
+  ? path.join(process.resourcesPath, 'phaneseek-update-check.patch.yml')
+  : path.join(__dirname, 'phaneseek-update-check.patch.yml');
 
 // 框架版本:应用自身 package.json(打包后为 app.asar/package.json)
 function frameworkVersion() {
@@ -183,7 +183,7 @@ function ensureUpdateCheckInProfile() {
 function downloadFramework(url, fileName) {
   return new Promise((resolve) => {
     if (!url || !/^https?:/i.test(String(url))) return resolve({ ok: false, message: '缺少安装包下载地址' });
-    const safe = String(fileName || 'WhaleBox-Setup.exe').replace(/[^0-9A-Za-z.\-() ]/g, '');
+    const safe = String(fileName || 'PhaneSeek-Setup.exe').replace(/[^0-9A-Za-z.\-() ]/g, '');
     const script = "$ProgressPreference='SilentlyContinue'; "
       + "$dl=Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Downloads'; "
       + 'if(-not(Test-Path $dl)){New-Item -ItemType Directory -Force -Path $dl|Out-Null}; '
@@ -203,16 +203,16 @@ function downloadFramework(url, fileName) {
 }
 
 // 用户数据目录(会话/设置/插件),独立于安装目录 → 覆盖安装/卸载都不丢
-// 开发模式:项目下 dev-data/ 便于测试;打包后:%APPDATA%\WhaleBox\dsh-home
+// 开发模式:项目下 dev-data/ 便于测试;打包后:%APPDATA%\PhaneSeek\dsh-home
 const DSH_HOME = () => {
   if (!app.isPackaged) return path.join(__dirname, '..', 'dev-data', 'dsh-home');
-  return path.join(app.getPath('appData'), 'WhaleBox', 'dsh-home');
+  return path.join(app.getPath('appData'), 'PhaneSeek', 'dsh-home');
 };
 
 // userData 重定向(Chromium 缓存/会话等)
 const udArg = process.argv.find(a => a.startsWith('--userdata-dir='));
 const USER_DATA = udArg ? udArg.slice(15) : (app.isPackaged
-  ? path.join(app.getPath('appData'), 'WhaleBox', 'user-data')
+  ? path.join(app.getPath('appData'), 'PhaneSeek', 'user-data')
   : path.join(__dirname, '..', 'dev-data', 'user-data'));;
 try { app.setPath('userData', USER_DATA); } catch (_) {}
 
@@ -221,6 +221,12 @@ try { app.setPath('userData', USER_DATA); } catch (_) {}
 // 每次拉起 powershell.exe 要 1~3 秒,是启动慢的最大元凶。
 let serviceProc = null;
 let serviceStarting = false;
+// dsh 0.1.5+ 强制 token 鉴权:服务启动时打印带 token 的 URL(形如
+// "dsh web: http://127.0.0.1:8898/?token=XXX"),只有它才能在窗口内通过鉴权
+// (首次访问用 token 换 HttpOnly 会话 cookie,之后由 Electron 持久化)。
+// 未捕获到时退回干净 URL(老行为:无鉴权版本可用,或有鉴权时靠已有 cookie)。
+let serviceLaunchUrl = null;
+const launchUrl = () => serviceLaunchUrl || WEB_URL;
 
 function probeService(timeoutMs = 1000) {
   return new Promise((resolve) => {
@@ -237,8 +243,34 @@ function probeService(timeoutMs = 1000) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 服务进程是否仍在运行(未退出/未被杀)
+function serviceAlive() {
+  return !!(serviceProc && serviceProc.exitCode === null && !serviceProc.killed);
+}
+
+// 等待服务就绪:轮询回环端口(150ms 一次,开销极小)。进程退出即放弃等待,
+// 由调用方决定是否重新拉起。首次启动可能要联网装配 profile,超时给足。
+const SERVICE_READY_TIMEOUT_MS = 120000;
+async function waitServiceReady(timeoutMs = SERVICE_READY_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await sleep(150);
+    if (!serviceAlive()) return false;
+    if (await probeService(800)) {
+      // token 鉴权版本:再短等服务打印鉴权 URL(拿到即说明已完整就绪)
+      const tokenDeadline = Date.now() + 3000;
+      while (!serviceLaunchUrl && Date.now() < tokenDeadline) await sleep(100);
+      return true;
+    }
+  }
+  return false;
+}
+
 async function startService() {
   if (await probeService()) { console.log('[svc] already up'); return true; }
+  // 进程还活着说明仍在初始化(首次启动装配 profile 较慢):继续等待,
+  // 绝不重复拉起——两个服务进程会争抢 DSH_HOME/profiles 的回退目录并互相破坏。
+  if (serviceAlive()) { console.log('[svc] still initializing, keep waiting'); return waitServiceReady(); }
   if (serviceStarting) return false;
   serviceStarting = true;
 
@@ -254,18 +286,10 @@ async function startService() {
   const home = DSH_HOME();
   try { fs.mkdirSync(home, { recursive: true }); } catch (_) {}
 
-  // 安全网:清理 profiles/node_modules 中的真实目录(dsh 0.1.1+ 要求符号链接,真实目录会导致启动崩溃)
-  try {
-    const nmDir = path.join(home, 'profiles', 'node_modules');
-    if (fs.existsSync(nmDir)) {
-      const entries = fs.readdirSync(nmDir, { withFileTypes: true });
-      const hasRealDirs = entries.some(d => d.isDirectory() && !d.isSymbolicLink());
-      if (hasRealDirs) {
-        fs.rmSync(nmDir, { recursive: true, force: true });
-        console.log('[svc] healed profiles/node_modules: removed real dirs for symlink rebuild');
-      }
-    }
-  } catch (e) { console.error('[svc] heal failed:', e && e.message); }
+  // 注:dsh 0.1.5 起自行维护 $DSH_HOME/profiles/node_modules 回退目录
+  // (符号链接农场 + pnpm 托管条目),旧版"清理真实目录"的安全网对 0.1.5
+  // 有害(带 @scope 的目录必然被判为真实目录,导致每次启动都整目录重建),
+  // 故已移除,交由 dsh 自身 heal。
 
   // 启动自检:前端与服务端版本必须匹配,不匹配时从备份恢复(防止坏更新后界面打不开)
   ensureWebuiCompatible();
@@ -275,7 +299,8 @@ async function startService() {
   console.log('[svc] starting: ' + nodeExe + ' ' + dshBin + ' web --no-open --port ' + PORT);
   const env = { ...process.env, DSH_HOME: home, DSH_WEB_URL: WEB_URL };
   // Windows 下隐藏窗口跑服务(无任何命令行窗口闪现)
-  const opts = { env, stdio: 'ignore', windowsHide: true, detached: false };
+  // stdout 必须接管:0.1.5+ 用它打印带 token 的鉴权 URL;同时持续消费避免管道写满阻塞。
+  const opts = { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, detached: false };
   // 追加 --patch 覆盖:内置更新检测插件行(文件缺失时跳过,兼容纯官方运行时)。
   // 注意 --patch 必须放在 --no-open/--port 之前:web 子命令的 passThroughOptions
   // 会让位置参数之后的选项透传给 web 应用解析(--no-open/--port 由 web 应用解析,
@@ -283,8 +308,10 @@ async function startService() {
   // --no-open:dsh web 默认会用系统默认浏览器打开 WebUI;本应用由玻璃窗口内嵌显示,
   // 不需要外开浏览器,故显式关闭(WebUI 仍在窗口内加载)。
   const svcArgs = [dshBin, 'web'];
-  if (fs.existsSync(HDSH_PATCH_FILE())) svcArgs.push('--patch', HDSH_PATCH_FILE());
+  if (fs.existsSync(PHANESEEK_PATCH_FILE())) svcArgs.push('--patch', PHANESEEK_PATCH_FILE());
   svcArgs.push('--no-open', '--port', String(PORT));
+  // 新服务进程 → 旧 token 作废(每次启动 token 随机)
+  serviceLaunchUrl = null;
   try {
     serviceProc = spawn(nodeExe, svcArgs, opts);
   } catch (e) {
@@ -297,16 +324,23 @@ async function startService() {
     console.log('[svc] exited code=' + code);
     serviceProc = null;
   });
+  // 捕获带 token 的鉴权 URL(跨 chunk 可能被切断,保留尾部再匹配)
+  let outTail = '';
+  const scanOut = (chunk) => {
+    outTail = (outTail + chunk.toString('utf8')).slice(-8192);
+    if (serviceLaunchUrl) return;
+    const m = outTail.match(/dsh web:\s+(http:\/\/127\.0\.0\.1:\d+\/\?token=[A-Za-z0-9_-]+)/);
+    if (m) { serviceLaunchUrl = m[1]; console.log('[svc] launch url captured'); }
+  };
+  if (serviceProc.stdout) serviceProc.stdout.on('data', scanOut);
+  if (serviceProc.stderr) serviceProc.stderr.on('data', (c) => console.log('[svc] err: ' + c.toString('utf8').trim()));
 
-  // 等待服务就绪(最长 30s;原生探测很便宜,150ms 高频轮询,就绪即刻返回)
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    await sleep(150);
-    if (await probeService(800)) { serviceStarting = false; console.log('[svc] ready'); return true; }
-  }
+  // 等待服务就绪(首次装配 profile 可能较慢,给足超时;进程退出即刻返回)
+  const ok = await waitServiceReady();
   serviceStarting = false;
-  console.error('[svc] timeout');
-  return false;
+  if (ok) console.log('[svc] ready' + (serviceLaunchUrl ? '' : ' (no token url)'));
+  else console.error('[svc] not ready (process ' + (serviceAlive() ? 'still running' : 'exited') + ')');
+  return ok;
 }
 
 function stopService() {
@@ -320,67 +354,9 @@ function stopService() {
   }
 }
 
-// ================= 首次启动:迁移现有用户数据 =================
-const MIGRATED_FLAG = 'migrated-from';
-// 旧版启动器的数据位置:按当前用户主目录动态解析,不硬编码任何机器路径
-const LEGACY_HOME = path.join(os.homedir(), '.dsh');
-
-function migrateLegacyData() {
-  const home = DSH_HOME();
-  try { fs.mkdirSync(home, { recursive: true }); } catch (_) {}
-  const flagPath = path.join(home, MIGRATED_FLAG);
-  if (fs.existsSync(flagPath)) return; // 已迁移过
-
-  if (!fs.existsSync(LEGACY_HOME)) {
-    try { fs.writeFileSync(flagPath, 'none'); } catch (_) {}
-    return;
-  }
-
-  console.log('[migrate] copying legacy data from ' + LEGACY_HOME + ' -> ' + home);
-  try {
-    const cp = spawnSync('robocopy', [LEGACY_HOME, home, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS'], { stdio: 'ignore', timeout: 120000 });
-    console.log('[migrate] robocopy exit=' + cp.status);
-    // robocopy 0-7 都是成功(1=复制了文件);>=8 才是失败
-    if (cp.status !== void 0 && cp.status < 8) {
-      fs.writeFileSync(flagPath, LEGACY_HOME);
-      console.log('[migrate] done');
-    }
-  } catch (e) { console.error('[migrate] failed: ' + e.message); }
-}
-
-// 旧品牌(HelloDeepseekHarness)用户数据目录:直接覆盖升级时,把旧数据整目录迁到新品牌目录
-// (dsh-home 会话/配置 + user-data);复制保留旧目录作备份,迁移成功后打标记不再重复。
-const OLD_APP_DATA = path.join(app.getPath('appData'), 'HelloDeepseekHarness');
-
-function migrateOldAppData() {
-  const root = path.join(app.getPath('appData'), 'WhaleBox');
-  try { fs.mkdirSync(root, { recursive: true }); } catch (_) {}
-  const flagPath = path.join(root, MIGRATED_FLAG + '-appdata');
-  if (fs.existsSync(flagPath)) return; // 已迁移过
-  if (!fs.existsSync(OLD_APP_DATA)) {
-    try { fs.writeFileSync(flagPath, 'none'); } catch (_) {}
-    return;
-  }
-  console.log('[migrate] copying old app data from ' + OLD_APP_DATA + ' -> ' + root);
-  try {
-    const cp = spawnSync('robocopy', [OLD_APP_DATA, root, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS'], { stdio: 'ignore', timeout: 180000 });
-    console.log('[migrate] appdata robocopy exit=' + cp.status);
-    // robocopy 0-7 都是成功;>=8 才是失败
-    if (cp.status !== void 0 && cp.status < 8) {
-      fs.writeFileSync(flagPath, OLD_APP_DATA);
-      console.log('[migrate] appdata done');
-      // 迁移后清理 profiles/node_modules:旧版 dsh 用真实目录,dsh 0.1.1+ 要求符号链接,
-      // 真实目录会导致 ensureSymlink 报错、服务无法启动。删除整个 node_modules 让 dsh 重建。
-      try {
-        const badNm = path.join(root, 'dsh-home', 'profiles', 'node_modules');
-        if (fs.existsSync(badNm)) {
-          fs.rmSync(badNm, { recursive: true, force: true });
-          console.log('[migrate] cleaned profiles/node_modules for symlink rebuild');
-        }
-      } catch (_) {}
-    }
-  } catch (e) { console.error('[migrate] appdata failed: ' + e.message); }
-}
+// 注:不做任何旧数据迁移。dsh 0.1.5 起自行维护 $DSH_HOME/profiles/node_modules
+// 回退目录(符号链接农场),旧的 profiles/node_modules 真实目录会被判定为非法
+// 回退而拒绝启动;拷贝旧布局数据只会污染新目录,故 PhaneSeek 首启一律为全新配置。
 
 // ================= 单实例锁 =================
 const isDevInstance = process.argv.includes('--dev');
@@ -484,11 +460,11 @@ if (!gotLock) {
   });
   ipcMain.on('win:close', () => { if (mainWindow) mainWindow.close(); });
 
-  // ---- 内置更新检测 IPC(preload 经 contextBridge 暴露为 window.hdsh) ----
-  ipcMain.handle('hdsh:get-versions', () => ({ framework: frameworkVersion(), webui: webuiVersion() }));
-  ipcMain.handle('hdsh:download-framework', (_e, payload) =>
+  // ---- 内置更新检测 IPC(preload 经 contextBridge 暴露为 window.phaneseek) ----
+  ipcMain.handle('phaneseek:get-versions', () => ({ framework: frameworkVersion(), webui: webuiVersion() }));
+  ipcMain.handle('phaneseek:download-framework', (_e, payload) =>
     downloadFramework(payload && payload.url, payload && payload.fileName));
-  ipcMain.handle('hdsh:open-url', async (_e, url) => {
+  ipcMain.handle('phaneseek:open-url', async (_e, url) => {
     if (!url || !/^https?:/i.test(String(url))) return { ok: false, message: '非法链接' };
     try {
       await shell.openExternal(String(url));
@@ -505,7 +481,7 @@ if (!gotLock) {
   {
     const sendUpdateEvent = (type, data) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('hdsh:updater-event', Object.assign({ type }, data || {}));
+        mainWindow.webContents.send('phaneseek:updater-event', Object.assign({ type }, data || {}));
       }
     };
     autoUpdater.on('checking-for-update', () => sendUpdateEvent('checking-for-update'));
@@ -520,32 +496,32 @@ if (!gotLock) {
     autoUpdater.on('update-downloaded', (info) => sendUpdateEvent('update-downloaded', { version: info && info.version }));
     autoUpdater.on('error', (err) => sendUpdateEvent('error', { message: String((err && err.message) || err) }));
 
-    ipcMain.handle('hdsh:updater-check', () => {
+    ipcMain.handle('phaneseek:updater-check', () => {
       if (!app.isPackaged) return sendUpdateEvent('error', { message: '自动更新仅在安装版中可用(开发模式跳过)' });
       return autoUpdater.checkForUpdates().catch((e) =>
         sendUpdateEvent('error', { message: String((e && e.message) || e) }));
     });
-    ipcMain.handle('hdsh:updater-download', () =>
+    ipcMain.handle('phaneseek:updater-download', () =>
       autoUpdater.downloadUpdate().catch((e) =>
         sendUpdateEvent('error', { message: String((e && e.message) || e) })));
-    ipcMain.handle('hdsh:updater-install', () => {
+    ipcMain.handle('phaneseek:updater-install', () => {
       autoUpdater.quitAndInstall();
       return { ok: true };
     });
   }
 
   // ---- WebUI 单独更新(不重装框架;替换运行时 dsh-web-frontend/dist) ----
-  // 检查/下载/安装三阶段;进度与结果经 hdsh:webui-event 推给渲染进程。
+  // 检查/下载/安装三阶段;进度与结果经 phaneseek:webui-event 推给渲染进程。
   // WebUI 资产 = 运行时 @deepseek-ai/dsh-web-frontend/dist,由 dsh web 直接服务,
   // 替换后重启 dsh web 服务并 reload 窗口即生效。
   let lastWebuiStaging = null; // 会话内暂存:{ version, distDir, pkgDir, stagingDir }
   const sendWebuiEvent = (type, data) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const payload = Object.assign({ type }, data || {});
-      mainWindow.webContents.send('hdsh:webui-event', payload);
+      mainWindow.webContents.send('phaneseek:webui-event', payload);
     }
   };
-  ipcMain.handle('hdsh:webui-check', async () => {
+  ipcMain.handle('phaneseek:webui-check', async () => {
     const current = webuiVersion();
     const server = serverVersion();
     const chk = await webuiUpdate.checkLatest(server);
@@ -571,7 +547,7 @@ if (!gotLock) {
       repoLabel: '官方仓库'
     };
   });
-  ipcMain.handle('hdsh:webui-download', async (_e, payload) => {
+  ipcMain.handle('phaneseek:webui-download', async (_e, payload) => {
     const version = payload && payload.version;
     if (!version || typeof version !== 'string') {
       sendWebuiEvent('error', { message: '缺少目标版本' });
@@ -598,7 +574,7 @@ if (!gotLock) {
     sendWebuiEvent('downloaded', { version: st.version });
     return { ok: true, version: st.version };
   });
-  ipcMain.handle('hdsh:webui-install', async () => {
+  ipcMain.handle('phaneseek:webui-install', async () => {
     if (!lastWebuiStaging) {
       sendWebuiEvent('error', { message: '尚未下载更新内容,请先下载' });
       return { ok: false, error: '尚未下载' };
@@ -639,7 +615,7 @@ if (!gotLock) {
       restarted = await startService();
     } catch (_) { restarted = false; }
     if (mainWindow && !mainWindow.isDestroyed() && restarted) {
-      try { mainWindow.loadURL(WEB_URL); } catch (_) {}
+      try { mainWindow.loadURL(launchUrl()); } catch (_) {}
     }
     sendWebuiEvent('done', { version: ap.version });
     return { ok: true, version: ap.version, restarted };
@@ -656,7 +632,7 @@ if (!gotLock) {
 
   const sendAllEvent = (type, data) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('hdsh:update-all-event', Object.assign({ type }, data || {}));
+      mainWindow.webContents.send('phaneseek:update-all-event', Object.assign({ type }, data || {}));
     }
   };
 
@@ -741,7 +717,7 @@ if (!gotLock) {
     if (!ap.ok) throw new Error(ap.error || '应用 WebUI 更新失败');
     try { await startService(); } catch (_) {}
     if (mainWindow && !mainWindow.isDestroyed()) {
-      try { mainWindow.loadURL(WEB_URL); } catch (_) {}
+      try { mainWindow.loadURL(launchUrl()); } catch (_) {}
     }
   }
 
@@ -799,12 +775,12 @@ if (!gotLock) {
     app.quit();
   }
 
-  ipcMain.handle('hdsh:check-all', async () => {
+  ipcMain.handle('phaneseek:check-all', async () => {
     try { return await checkAllUpdates(); } catch (e) {
       return { ok: false, error: String((e && e.message) || e), actions: [], anyUpdate: false };
     }
   });
-  ipcMain.handle('hdsh:update-all-run', async () => {
+  ipcMain.handle('phaneseek:update-all-run', async () => {
     try {
       const chk = lastCheck || await checkAllUpdates();
       // 1) WebUI 修复(与前端不匹配时;完成后界面已刷新)
@@ -818,7 +794,7 @@ if (!gotLock) {
           quitAndRunInstaller(dl.file);
           return { ok: true, mode: 'accelerated', version: dl.version };
         }
-        // 回退:electron-updater 标准下载(事件经 hdsh:updater-event,UI 已订阅)
+        // 回退:electron-updater 标准下载(事件经 phaneseek:updater-event,UI 已订阅)
         sendAllEvent('fallback', { message: dl.error || '加速通道不可用' });
         autoUpdater.downloadUpdate().catch((e) =>
           sendAllEvent('error', { message: String((e && e.message) || e) }));
@@ -840,17 +816,14 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    // 1. 迁移旧数据(仅首次;之后只是两次存在性检查,不阻塞)
-    migrateOldAppData();
-    migrateLegacyData();
-    // 2. 先开窗口(显示启动画面),不等服务
+    // 1. 先开窗口(显示启动画面),不等服务
     createWindow();
-    // 3. 后台拉起服务,就绪即换真实界面
+    // 2. 后台拉起服务,就绪即换真实界面
     (async () => {
       let ok = await startService();
       if (!ok && !app.isQuitting) ok = await startService(); // 重试一次,兜住慢冷启动
       if (!mainWindow || mainWindow.isDestroyed()) return;
-      if (ok) mainWindow.loadURL(WEB_URL);
+      if (ok) mainWindow.loadURL(launchUrl());
       else showSplashError(mainWindow);
     })();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

@@ -1,4 +1,21 @@
-# WhaleBox 1.5.2
+# PhaneSeek 1.6.0
+
+> 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
+
+## 1.6.0 更新（2026-09-11）
+
+- **统一更名为 PhaneSeek**：应用 `appId`（`io.github.feathercloudsky.phaneseek`）、npm `name`/`productName`、GitHub 仓库、安装包产物名（`PhaneSeek-Setup-1.6.0.exe`）、可执行文件名、快捷方式/卸载显示名、用户数据目录（`%APPDATA%\PhaneSeek`）、内置更新检测插件文案全部同步更名
+- **内置框架与 WebUI 升级**：内置运行时 dsh 由 `0.1.1-rc.2` 升至 `0.1.5-rc.2`，官方 WebUI 前端（`@deepseek-ai/dsh-web-frontend`）同步升至 `0.1.5-rc.2`（前端须与服务端严格同版本）
+- **内部标识同步更名**：IPC 通道（`phaneseek:*`）、preload 桥（`window.phaneseek`）、组合覆盖文件（`app/phaneseek-update-check.patch.yml`）等内部标识一并清理
+- **标题栏品牌文案调整**：顶部品牌胶囊由 `PhaneSeek 非官方` 改为 `PhaneSeek 法涅斯`
+- **适配 dsh 0.1.5 强制 token 鉴权**：新版 dsh 会为 WebUI 生成一次性启动 token（仅 `?token=…` 能换取会话 cookie，其余请求 401），主进程改为从服务输出中捕获鉴权地址后再加载界面，否则升级后窗口会显示 401 错误页
+- **修复服务启动与就绪判定**：新增"进程仍存活就继续等待、绝不重复拉起"逻辑（两个服务进程会争抢数据目录互相破坏），并去掉会破坏新版权威回退目录的清理代码
+- **移除旧数据迁移**：不再向新数据目录拷贝旧版（`%USERPROFILE%\.dsh`）数据——旧布局的 `profiles/node_modules` 会被 dsh 0.1.5 判定为非法回退目录并直接拒绝启动
+- **升级说明**：因 `appId` 变更，1.6.0 与旧版本互不自动升级，请手动下载安装新版安装包；用户数据目录随更名更换，PhaneSeek 首次启动为全新配置
+
+---
+
+# PhaneSeek 1.5.2
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -8,18 +25,18 @@
 
 ---
 
-# WhaleBox 1.5.1
+# PhaneSeek 1.5.1
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
 ## 1.5.1 更新（2026-08-26）
 
-- **修复升级/迁移后无法启动**：从旧品牌（HelloDeepseekHarness）迁移数据时，`profiles/node_modules` 下的真实目录（非符号链接）会导致 dsh 0.1.1+ 启动崩溃；迁移后自动清理，`startService()` 启动前额外检测并修复。
+- **修复升级/迁移后无法启动**：升级迁移数据时，`profiles/node_modules` 下的真实目录（非符号链接）会导致 dsh 0.1.1+ 启动崩溃；迁移后自动清理，`startService()` 启动前额外检测并修复。
 - **修复 Windows 上 junction 检测**：`Dirent.isSymbolicLink()` 在 Windows 上对 junction 返回 `false`，导致清理逻辑误判；改用 `fs.lstatSync().isSymbolicLink()` 并添加 `isJunction()` 回退检查。
 
 ---
 
-# WhaleBox 1.5.0
+# PhaneSeek 1.5.0
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -30,13 +47,13 @@
 
 ---
 
-# WhaleBox 1.4.0
+# PhaneSeek 1.4.0
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
 ## 1.4.0 更新（2026-08-25）
 
-- **统一更新检测**：设置 → 通用设置 的「更新检测」重构为单一组件——「一键检查更新」同时检查框架（WhaleBox Releases）与 WebUI（官方 npm）的新版本，**分行显示版本号**（框架：当前/最新；WebUI：当前/服务端/官方最新），检测到任一新版本都会提示
+- **统一更新检测**：设置 → 通用设置 的「更新检测」重构为单一组件——「一键检查更新」同时检查框架（PhaneSeek Releases）与 WebUI（官方 npm）的新版本，**分行显示版本号**（框架：当前/最新；WebUI：当前/服务端/官方最新），检测到任一新版本都会提示
 - **一键更新**：发现更新后点「一键更新」自动完成全部操作，无需逐项处理：
   1. WebUI 与服务端不匹配时先自动修复（下载配套界面 → 原子替换 → 重启本地服务）
   2. 框架有新版本时自动下载安装包 → 校验 → 退出应用 → 静默安装（新框架自带配套新 WebUI）→ 完成后可重新启动应用
@@ -50,7 +67,7 @@
 
 ---
 
-# WhaleBox 1.3.1
+# PhaneSeek 1.3.1
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -65,7 +82,7 @@
 
 ---
 
-# WhaleBox 1.3.0
+# PhaneSeek 1.3.0
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -74,13 +91,13 @@
 - **WebUI 单独更新**：设置 → 通用设置 → 检查 WebUI 更新，发现新版本后点击「立即更新」，应用自动下载官方新版界面（转圈 + 进度条）、解压校验、原子替换并重启本地服务，几秒钟生效——**无需重装框架**
   - 版本来源：官方 npm `@deepseek-ai/dsh-web-frontend`（dist-tags 取版本最高者，避免 latest 旧标签误报；仅允许与当前框架同 major.minor 的版本，防止界面与服务端 API 不匹配）
   - 更新对象：运行时 `node_modules/@deepseek-ai/dsh-web-frontend/dist`（dsh web 经 `require.resolve` 服务该目录），替换后重启 dsh web 服务并刷新窗口
-  - 实现方式：新增纯 Node 模块 `app/webui-update.js`（registry 检查 / tarball 下载 / tar 解压校验 / 原子替换），主进程新增 `hdsh:webui-check / webui-download / webui-install` IPC 与 `hdsh:webui-event` 事件，preload 扩展 `window.hdsh`（webuiCheck / webuiDownload / webuiInstall / onWebuiEvent）；客户端插件 WebUI 组升级为完整状态机（检查 → 下载进度 → 应用 → 完成）
+  - 实现方式：新增纯 Node 模块 `app/webui-update.js`（registry 检查 / tarball 下载 / tar 解压校验 / 原子替换），主进程新增 `phaneseek:webui-check / webui-download / webui-install` IPC 与 `phaneseek:webui-event` 事件，preload 扩展 `window.phaneseek`（webuiCheck / webuiDownload / webuiInstall / onWebuiEvent）；客户端插件 WebUI 组升级为完整状态机（检查 → 下载进度 → 应用 → 完成）
 - 修复 dev 模式路径：`runtimeDir / DSH_HOME / USER_DATA` 的开发分支统一指向 `package-app/` 下（此前多一层目录导致 dev 启动找不到内置运行时、junction 建错位置）
 - 源码工程 `package-app/` 同步更新：builder `files` 白名单新增 `webui-update.js`，插件与 app 版本升至 1.3.0
 
 ---
 
-# WhaleBox 1.2.0
+# PhaneSeek 1.2.0
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -90,27 +107,27 @@
   - 基于 electron-updater（GitHub Releases 发布源，latest.yml 差分更新），未签名场景已处理 SmartScreen/MOTW
   - 下载进度实时展示（百分比 + 进度条），安装阶段提示「应用将自动重启」
 - **WebUI 检测**：保留官方仓库（deepseek-ai/deepseek-harness）版本检测与发布页入口；WebUI 组件随框架安装包分发，随框架更新一并升级
-- **实现方式**：主进程集成 autoUpdater（check/download/install IPC + 事件转发），preload 扩展 `window.hdsh`（checkUpdate / downloadUpdate / installUpdate / onUpdateEvent）；客户端插件 `dsh-update-check` 升级为事件驱动的状态机 UI
+- **实现方式**：主进程集成 autoUpdater（check/download/install IPC + 事件转发），preload 扩展 `window.phaneseek`（checkUpdate / downloadUpdate / installUpdate / onUpdateEvent）；客户端插件 `dsh-update-check` 升级为事件驱动的状态机 UI
 - 源码工程 `package-app/` 同步更新：app 依赖新增 electron-updater，builder 配置新增 `publish: github`（构建生成 latest.yml + blockmap）
 
 ---
 
-# WhaleBox 1.1.0
+# PhaneSeek 1.1.0
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
 ## 1.1.0 更新（2026-08-24）
 
-- **内置更新检测**：设置 → 通用设置 新增「更新检测」栏目，两个独立按钮分别检测 WebUI（官方 deepseek-ai/deepseek-harness 仓库）与本框架（FeatherCloudSky/WhaleBox 仓库）的新版本；发现新版本时会询问是否立即更新
+- **内置更新检测**：设置 → 通用设置 新增「更新检测」栏目，两个独立按钮分别检测 WebUI（官方 deepseek-ai/deepseek-harness 仓库）与本框架（FeatherCloudSky/PhaneSeek 仓库）的新版本；发现新版本时会询问是否立即更新
   - WebUI 更新：打开官方仓库标签页查看最新版本（WebUI 组件随框架安装包分发）
   - 框架更新：自动下载最新安装包到「下载」文件夹并打开，关闭应用后运行安装程序即可升级
-  - 版本来源：WebUI 取官方 GitHub `dsh-v*` 标签（备用 npm `next` 标记）；框架取 WhaleBox Releases
-- **实现方式**：Electron 主进程新增 `hdsh` IPC（当前版本读取 / 安装包下载 / 打开链接），preload 经 contextBridge 暴露为 `window.hdsh`；更新检测 UI 为随包客户端插件（`dsh-update-check`），经 `dsh web --patch` 组合覆盖挂入设置页
-- 源码工程 `package-app/` 同步更新：新增 `runtime-addons/dsh-update-check`（更新检测包）与 `app/hdsh-update-check.patch.yml`（组合覆盖）
+  - 版本来源：WebUI 取官方 GitHub `dsh-v*` 标签（备用 npm `next` 标记）；框架取 PhaneSeek Releases
+- **实现方式**：Electron 主进程新增 `phaneseek` IPC（当前版本读取 / 安装包下载 / 打开链接），preload 经 contextBridge 暴露为 `window.phaneseek`；更新检测 UI 为随包客户端插件（`dsh-update-check`），经 `dsh web --patch` 组合覆盖挂入设置页
+- 源码工程 `package-app/` 同步更新：新增 `runtime-addons/dsh-update-check`（更新检测包）与 `app/phaneseek-update-check.patch.yml`（组合覆盖）
 
 ---
 
-# WhaleBox 1.0.3
+# PhaneSeek 1.0.3
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -121,7 +138,7 @@
 
 ---
 
-# WhaleBox 1.0.2
+# PhaneSeek 1.0.2
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -132,7 +149,7 @@
 
 ---
 
-# WhaleBox 1.0.1
+# PhaneSeek 1.0.1
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 
@@ -145,7 +162,7 @@
 
 ---
 
-# WhaleBox 1.0.0
+# PhaneSeek 1.0.0
 
 > 非官方 Windows 一键安装包：将 DeepSeek Harness（dsh）WebUI 封装为独立桌面应用，内置完整 Node.js 与 dsh 运行时，无需任何前置环境，双击即用。
 

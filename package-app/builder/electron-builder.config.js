@@ -1,4 +1,4 @@
-// electron-builder config — WhaleBox 鲸盒 1.5.2
+// electron-builder config — PhaneSeek 1.6.0
 const path = require('path');
 
 // 本地 Electron 目录(避免重新下载)。发布源码时请勿硬编码本机路径:
@@ -6,14 +6,14 @@ const path = require('path');
 const electronDist = process.env.ELECTRON_DIST || undefined;
 
 module.exports = {
-  appId: 'io.github.feathercloudsky.whalebox',
-  productName: 'WhaleBox',
+  appId: 'io.github.feathercloudsky.phaneseek',
+  productName: 'PhaneSeek',
   copyright: 'Copyright (c) 2026 FeatherCloudSky',
   // 自动更新发布源:GitHub Releases(latest.yml + blockmap 由构建生成)
   publish: {
     provider: 'github',
     owner: 'FeatherCloudSky',
-    repo: 'WhaleBox'
+    repo: 'PhaneSeek'
   },
   afterPack: path.join(__dirname, 'afterPack-icon.js'),
   directories: {
@@ -28,7 +28,7 @@ module.exports = {
     'webui-update.js',
     'assets/**/*',
     'package.json',
-    'hdsh-update-check.patch.yml'
+    'phaneseek-update-check.patch.yml'
   ],
   // bundled runtime (no node install needed): runtime-staging -> resources/runtime
   // NOTE: from 必须指向 runtime-staging 根目录,而非 dsh。
@@ -44,8 +44,8 @@ module.exports = {
     {
       // 内置更新检测的组合覆盖文件必须放在 resources/(真实文件)而非 app.asar:
       // dsh 服务由纯 node.exe 拉起,无法读取 asar 内部文件
-      from: path.join(__dirname, '..', 'app', 'hdsh-update-check.patch.yml'),
-      to: 'hdsh-update-check.patch.yml'
+      from: path.join(__dirname, '..', 'app', 'phaneseek-update-check.patch.yml'),
+      to: 'phaneseek-update-check.patch.yml'
     }
   ],
   // reuse local Electron binary to avoid re-download (see electronDist above)
@@ -59,7 +59,7 @@ module.exports = {
       }
     ],
     icon: path.join(__dirname, '..', 'app', 'assets', 'deepseek.ico'),
-    executableName: 'WhaleBox'
+    executableName: 'PhaneSeek'
     // NOTE: signAndEditExecutable must stay enabled (default) so the whale
     // icon gets injected into the exe; winCodeSign comes from npmmirror
     // (see ELECTRON_BUILDER_BINARIES_MIRROR in build.bat)
@@ -71,10 +71,10 @@ module.exports = {
     allowToChangeInstallationDirectory: true,
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
-    shortcutName: 'WhaleBox',
-    uninstallDisplayName: 'WhaleBox',
+    shortcutName: 'PhaneSeek',
+    uninstallDisplayName: 'PhaneSeek',
     language: 2052,
-    artifactName: 'WhaleBox-Setup-${version}.${ext}',
+    artifactName: 'PhaneSeek-Setup-${version}.${ext}',
     deleteAppDataOnUninstall: false,
     runAfterFinish: true,
     installerIcon: path.join(__dirname, '..', 'app', 'assets', 'deepseek.ico'),

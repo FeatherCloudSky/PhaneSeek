@@ -1,8 +1,8 @@
 {
-  "name": "whalebox",
-  "productName": "WhaleBox",
-  "version": "1.5.2",
-  "description": "WhaleBox 鲸盒 — DeepSeek Harness WebUI 非官方桌面封装",
+  "name": "phaneseek",
+  "productName": "PhaneSeek",
+  "version": "1.6.0",
+  "description": "PhaneSeek — DeepSeek Harness WebUI 非官方桌面封装",
   "main": "main.js",
   "author": "FeatherCloudSky",
   "license": "MIT",
